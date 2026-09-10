@@ -284,7 +284,7 @@ def render(data):
         d.line([(24, y), (W - 24, y)], fill=0, width=2)
 
     # header
-    now = datetime.now()
+    now = datetime.now(TZ)
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
     d.text((24, 14), dagar[now.weekday()].upper(), font=font(28, True), fill=0)
     d.text((W - 24, 20), now.strftime("uppd %H:%M"),
