@@ -1,0 +1,39 @@
+# Dagens gåta. En "fråga|svar" per rad. Rader med # och tomma rader hoppas över.
+# get_gata() roterar på dagnummer, så listan tar aldrig slut – fyll på fritt.
+# Ursprung: handplockat och städat ur roligagåtor.se/bra-gator, svar egna.
+Varför kom tomten inte i år?|Han hade klappat ihop sig
+Vad äter snögubben till frukost?|Frostflingor
+När är det afton hela dagen?|Julafton, påskafton och så vidare
+Vilken gubbe har aldrig varit barn?|Snögubben
+När kommer december före november?|När man tittar i en ordbok
+Hur kan man bära vatten i en hink som läcker utan att en droppe rinner ut?|När vattnet är fruset till is
+Säg ett namn som låter likadant framlänges och baklänges|Otto, Anna eller Ebbe
+Vem blir både plundrad och utkastad?|Julgranen
+Vilken frost gör dig diktsugen?|Rimfrost
+Vem lägger sig bara när det är kallt?|Isen
+Vem raskar över isen?|Räven
+Vad sägs man blir av att äta pepparkakor?|Snäll
+Roten upp och toppen ner, växer bara på vintern|En istapp
+Vilken fisk kan inte simma?|En fiskpinne
+Vilken stad är känd för sitt enklaste hus?|Enköping
+Hur många dagar tar det för ett adventsljus att brinna upp?|Inga – ljus brinner alltid ner
+Heter det "en rak kurva" eller "ett rak kurva"?|Ingetdera – det finns inga raka kurvor
+Vad säger den engelska salladen när man öppnar kylskåpsdörren?|"Close the door, I'm dressing"
+Jag har många blad men är varken träd eller blomma. Många vill sluka mig, andra somnar i mitt sällskap. Vem är jag?|En bok
+På vilken sida av fåret är det mest ull?|På utsidan
+Om en kartong ägg går på 14 kronor, vad går en kyckling på?|På benen
+När är det rätt att servera mjölken i en skål?|När man matar katten
+När är det extra viktigt att se upp för skolbarn i trafiken?|När de kör bil
+En man gick ut i ovädret utan paraply men blev inte blöt. Hur?|Det var en sandstorm
+Ett ägg behöver tio minuter för att bli hårdkokt. Hur länge tar tre ägg?|Tio minuter
+Du kapar mitt huvud utan att färga kniven röd, sedan gråter du vid min sida när jag är död. Vad är jag?|En lök
+Du hörde mig nyss och får höra mig igen. Sedan dör jag tills du ropar på mig. Vem är jag?|Ett eko
+En grönsakshandlare är 54 år, 175 cm lång och har skonummer 43. Vad väger han?|Frukt och grönsaker
+Ett par har sju barn och hälften är pojkar. Hur går det ihop?|Alla sju är pojkar
+Den har varken lock eller botten, men håller ändå kött, blod och ben på plats. Vad är det?|En ring
+Vilken hund klarar väldigt hög temperatur?|En varmkorv
+Med vad börjar natten och slutar dagen?|Med bokstaven N
+En dömd man väljer mellan tre rum: ett med eldhav, ett med en beväpnad lönnmördare, ett med ett lejon som inte ätit på ett år. Vilket är säkrast?|Rummet med lejonet – det har svultit ihjäl
+Vad kan du hålla i din högra hand men inte i din vänstra?|Din vänstra hand
+Fyra äpplen hänger i ett träd. Prästen, hans dotter, klockaren och hans fru tar varsitt, men ett hänger kvar. Hur?|Klockaren är gift med prästens dotter – de är bara tre personer
+Vilken nyckel kan inte öppna dörrar?|En skiftnyckel

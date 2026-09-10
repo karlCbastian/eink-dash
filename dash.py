@@ -274,14 +274,20 @@ def get_lunch():
     return "SKOLMATEN", "Ingen meny"
 
 
+GATOR = Path(__file__).with_name("gator.txt")
+
 def get_gata():
-    """Dagens gåta från RSS-feed i GATA_URL. Tar senaste posten."""
-    feed = feedparser.parse(os.environ["GATA_URL"])
-    if not feed.entries:
-        return ""
-    e = feed.entries[0]
-    text = re.sub(r"<[^>]+>", " ", e.get("summary", e.get("title", "")))
-    return re.sub(r"\s+", " ", text).strip()
+    """Dagens gåta ur gator.txt. En 'fråga|svar' per rad, roterar på dagnummer
+    så listan aldrig tar slut. Returnerar (fråga, svar) eller None."""
+    rader = [
+        r.strip() for r in GATOR.read_text(encoding="utf-8").splitlines()
+        if r.strip() and not r.lstrip().startswith("#")
+    ]
+    if not rader:
+        return None
+    rad = rader[datetime.now(TZ).timetuple().tm_yday % len(rader)]
+    fraga, _, svar = rad.partition("|")
+    return fraga.strip(), svar.strip()
 # --- rendering ------------------------------------------------------------
 
 def render(data):
@@ -370,13 +376,15 @@ def render(data):
 
     rule(392)
 
-    # dagens gåta, där skolmaten låg förut
-    gata = data["gata"]
-    if gata:
-        d.text((24, 398), "DAGENS GÅTA", font=font(18, True), fill=0)
+    # dagens gåta, där skolmaten låg förut. Bara frågan — barnen får klura.
+    if data["gata"]:
+        fraga, _svar = data["gata"]
+        d.text((24, 396), "DAGENS GÅTA", font=font(18, True), fill=0)
         gata_f = font(20)
-        for i, line in enumerate(wrap(d, gata, gata_f, W - 48)):
-            d.text((24, 420 + i * 24), line, font=gata_f, fill=0)
+        y = 420
+        for line in wrap(d, fraga, gata_f, W - 48, maxlines=3):
+            d.text((24, y), line, font=gata_f, fill=0)
+            y += 22
 
     return img
 
@@ -396,7 +404,7 @@ def collect():
         "tomorrow": safe(get_tomorrow_events, []),
 	"matches": safe(get_matches, [(v, "—") for v in dict.fromkeys(BARN.values())]),
         "lunch": safe(get_lunch, ("", "—")),
-        "gata": safe(get_gata, ""),
+        "gata": safe(get_gata, None),
     }
 
 
