@@ -272,6 +272,16 @@ def get_lunch():
             return etikett, dagar[d]
 
     return "SKOLMATEN", "Ingen meny"
+
+
+def get_gata():
+    """Dagens gåta från RSS-feed i GATA_URL. Tar senaste posten."""
+    feed = feedparser.parse(os.environ["GATA_URL"])
+    if not feed.entries:
+        return ""
+    e = feed.entries[0]
+    text = re.sub(r"<[^>]+>", " ", e.get("summary", e.get("title", "")))
+    return re.sub(r"\s+", " ", text).strip()
 # --- rendering ------------------------------------------------------------
 
 def render(data):
@@ -291,20 +301,33 @@ def render(data):
            font=font(20), fill=0, anchor="ra")
     rule(58)
 
-    # väder, vänster
+    # väder, vänster — förminskat för att ge plats åt skolmaten under
     w = data["weather"]
-    temp_f = font(96, True)
+    temp_f = font(72, True)
     temp_str = f"{w['temp']:.0f}°"
-    d.text((24, 78), temp_str, font=temp_f, fill=0)
+    d.text((24, 74), temp_str, font=temp_f, fill=0)
     icon_x = 24 + int(d.textlength(temp_str, font=temp_f)) + 10
-    draw_weather_icon(img, icon_x, 84, 72, w.get("code", 0))
+    draw_weather_icon(img, icon_x, 78, 52, w.get("code", 0))
     minmax_f = font(20)
     range_str = f"{w['low']:.0f}° / {w['high']:.0f}°"
-    d.text((24, 226), range_str, font=minmax_f, fill=0)
+    d.text((24, 148), range_str, font=minmax_f, fill=0)
     range_w = int(d.textlength(range_str, font=minmax_f))
     icon_x = 24 + range_w + 10
-    draw_weather_icon(img, icon_x, 212, 32, w.get("forecast_code", 0))
-    d.text((icon_x + 46, 226), "kommande 12h", font=minmax_f, fill=0)
+    draw_weather_icon(img, icon_x, 136, 30, w.get("forecast_code", 0))
+    d.text((icon_x + 44, 148), "kommande 12h", font=minmax_f, fill=0)
+
+    # skolmaten, under vädret i vänsterspalten
+    etikett, meny = data["lunch"]
+    if meny:
+        d.text((24, 188), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
+        meny_f = font(20)
+        my = 212
+        for rad in meny.split(" · ")[:3]:
+            if my >= 288:
+                break
+            d.text((24, my), fit(d, rad, meny_f, 320 - 48), font=meny_f, fill=0)
+            my += 24
+
     d.line([(320, 70), (320, 290)], fill=0, width=1)
 
     # kalender, höger
@@ -346,13 +369,13 @@ def render(data):
 
     rule(392)
 
-    # skolmaten
-    etikett, meny = data["lunch"]
-    if meny:
-        d.text((24, 398), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
-        meny_f = font(20)
-        forsta = meny.split(" · ")[0]
-        d.text((24, 424), fit(d, forsta, meny_f, W - 48), font=meny_f, fill=0)
+    # dagens gåta, där skolmaten låg förut
+    gata = data["gata"]
+    if gata:
+        d.text((24, 398), "DAGENS GÅTA", font=font(18, True), fill=0)
+        gata_f = font(20)
+        for i, line in enumerate(wrap(d, gata, gata_f, W - 48)):
+            d.text((24, 420 + i * 24), line, font=gata_f, fill=0)
 
     return img
 
@@ -372,6 +395,7 @@ def collect():
         "tomorrow": safe(get_tomorrow_events, []),
 	"matches": safe(get_matches, [(v, "—") for v in dict.fromkeys(BARN.values())]),
         "lunch": safe(get_lunch, ("", "—")),
+        "gata": safe(get_gata, ""),
     }
 
 
