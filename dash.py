@@ -325,10 +325,10 @@ def render(data):
     # skolmaten, under vädret i vänsterspalten
     etikett, meny = data["lunch"]
     if meny:
-        d.text((24, 196), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
+        d.text((24, 204), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
         meny_f = font(20)
         forsta = meny.split(" · ")[0]
-        my = 220
+        my = 228
         for line in wrap(d, forsta, meny_f, 320 - 48, maxlines=3):
             if my >= 290:
                 break
