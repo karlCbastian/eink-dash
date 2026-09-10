@@ -68,6 +68,32 @@ def fit(d, text, f, maxbredd):
         text = text[:-1]
     return text + "…"
 
+FONT_WX = str(Path(__file__).with_name("fonts") / "weathericons.ttf")
+
+_WSYMB_GLYPH = {
+    1:  "",                        # day-sunny
+    2:  "",  3:  "",         # day-sunny-overcast
+    4:  "",  5:  "",  6:  "",  # cloudy
+    7:  "",                        # fog
+    8:  "",  9:  "",  10: "",  # day-showers
+    11: "",                        # day-thunderstorm
+    12: "",  13: "",  14: "",  # day-sleet
+    15: "",  16: "",  17: "",  # day-snow
+    18: "",  19: "",  20: "",  # rain
+    21: "",                        # thunderstorm
+    22: "",  23: "",  24: "",  # sleet
+    25: "",  26: "",  27: "",  # snow
+}
+
+def draw_weather_icon(img, x, y, sz, code):
+    glyph = _WSYMB_GLYPH.get(code, "")
+    f = ImageFont.truetype(FONT_WX, sz)
+    # Rendera i gråskala och tröskling → skarpare 1-bit än direkt läge "1"
+    tmp = Image.new("L", (sz + 20, sz + 20), 255)
+    ImageDraw.Draw(tmp).text((10, 4), glyph, font=f, fill=0)
+    bw = tmp.point(lambda p: 0 if p < 128 else 255, "1")
+    img.paste(bw, (x - 10, y - 4))
+
 def get_weather():
     """SMHI SNOW1gv1. Ersatte pmp3g som stängdes 2026-03-31."""
     url = ("https://opendata-download-metfcst.smhi.se/api/category/snow1g/"
@@ -83,9 +109,10 @@ def get_weather():
     ] or series[:1]
     temps = [s["data"]["air_temperature"] for s in upcoming]
 
+    code = series[0]["data"].get("symbol_code", 0)
     return {
         "temp": series[0]["data"]["air_temperature"],
-        "desc": WSYMB.get(series[0]["data"].get("symbol_code"), "—"),
+        "code": code,
         "low": min(temps),
         "high": max(temps),
     }
@@ -222,8 +249,11 @@ def render(data):
 
     # väder, vänster
     w = data["weather"]
-    d.text((24, 78), f"{w['temp']:.0f}°", font=font(96, True), fill=0)
-    d.text((24, 190), w["desc"], font=font(24), fill=0)
+    temp_f = font(96, True)
+    temp_str = f"{w['temp']:.0f}°"
+    d.text((24, 78), temp_str, font=temp_f, fill=0)
+    icon_x = 24 + int(d.textlength(temp_str, font=temp_f)) + 10
+    draw_weather_icon(img, icon_x, 84, 72, w.get("code", 0))
     d.text((24, 226), f"{w['low']:.0f}° / {w['high']:.0f}°  kommande 12h",
            font=font(20), fill=0)
     d.line([(320, 70), (320, 290)], fill=0, width=1)
@@ -255,22 +285,8 @@ def render(data):
     if meny:
         d.text((24, 398), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
         meny_f = font(20)
-        maxw = W - 48
-        if d.textlength(meny, font=meny_f) <= maxw:
-            d.text((24, 424), meny, font=meny_f, fill=0)
-        else:
-            delar = meny.split(" · ")
-            rad1 = []
-            for del_ in delar:
-                kandidat = " · ".join(rad1 + [del_])
-                if d.textlength(kandidat, font=meny_f) <= maxw:
-                    rad1.append(del_)
-                else:
-                    break
-            rad2 = delar[len(rad1):]
-            d.text((24, 420), " · ".join(rad1) or fit(d, meny, meny_f, maxw), font=meny_f, fill=0)
-            if rad2:
-                d.text((24, 448), fit(d, " · ".join(rad2), meny_f, maxw), font=meny_f, fill=0)
+        forsta = meny.split(" · ")[0]
+        d.text((24, 424), fit(d, forsta, meny_f, W - 48), font=meny_f, fill=0)
 
     return img
 
@@ -285,7 +301,7 @@ def collect():
             return fallback
 
     return {
-        "weather": safe(get_weather, {"temp": 0, "desc": "—", "low": 0, "high": 0}),
+        "weather": safe(get_weather, {"temp": 0, "code": 0, "low": 0, "high": 0}),
         "events": safe(get_events, []),
 	"matches": safe(get_matches, [(v, "—") for v in dict.fromkeys(BARN.values())]),
         "lunch": safe(get_lunch, ("", "—")),
