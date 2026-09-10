@@ -310,20 +310,20 @@ def render(data):
     draw_weather_icon(img, icon_x, 78, 52, w.get("code", 0))
     minmax_f = font(20)
     range_str = f"{w['low']:.0f}° / {w['high']:.0f}°"
-    d.text((24, 148), range_str, font=minmax_f, fill=0)
+    d.text((24, 162), range_str, font=minmax_f, fill=0)
     range_w = int(d.textlength(range_str, font=minmax_f))
     icon_x = 24 + range_w + 10
-    draw_weather_icon(img, icon_x, 136, 30, w.get("forecast_code", 0))
-    d.text((icon_x + 44, 148), "kommande 12h", font=minmax_f, fill=0)
+    draw_weather_icon(img, icon_x, 150, 30, w.get("forecast_code", 0))
+    d.text((icon_x + 44, 162), "kommande 12h", font=minmax_f, fill=0)
 
     # skolmaten, under vädret i vänsterspalten
     etikett, meny = data["lunch"]
     if meny:
-        d.text((24, 188), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
+        d.text((24, 196), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
         meny_f = font(20)
-        my = 212
+        my = 220
         for rad in meny.split(" · ")[:3]:
-            if my >= 288:
+            if my >= 290:
                 break
             d.text((24, my), fit(d, rad, meny_f, 320 - 48), font=meny_f, fill=0)
             my += 24
