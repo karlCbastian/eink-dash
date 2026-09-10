@@ -21,8 +21,12 @@ from PIL import Image, ImageDraw, ImageFont
 W, H = 800, 480
 LAT, LON = 59.43, 17.95  # Sollentuna
 
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+if sys.platform == "win32":
+    FONT = "C:/Windows/Fonts/arial.ttf"
+    FONT_B = "C:/Windows/Fonts/arialbd.ttf"
+else:
+    FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
 def font(size, bold=False):
@@ -240,17 +244,33 @@ def render(data):
     d.text((24, 290), "NÄSTA MATCH", font=font(18, True), fill=0)
     y = 316
     for vem, text in data["matches"]:
-        d.text((24, y), vem, font=font(22, True), fill=0)
-        d.text((196, y), fit(d, text, font(22), W - 220), font=font(22), fill=0)
-        y += 32
+        d.text((24, y), vem, font=font(18, True), fill=0)
+        d.text((160, y), fit(d, text, font(18), W - 184), font=font(18), fill=0)
+        y += 26
 
     rule(392)
 
     # skolmaten
     etikett, meny = data["lunch"]
     if meny:
-        d.text((24, 408), f"SKOLMATEN {etikett}".strip(), font=font(20, True), fill=0)
-        d.text((24, 436), fit(d, meny, font(26), W - 48), font=font(26), fill=0)
+        d.text((24, 398), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
+        meny_f = font(20)
+        maxw = W - 48
+        if d.textlength(meny, font=meny_f) <= maxw:
+            d.text((24, 424), meny, font=meny_f, fill=0)
+        else:
+            delar = meny.split(" · ")
+            rad1 = []
+            for del_ in delar:
+                kandidat = " · ".join(rad1 + [del_])
+                if d.textlength(kandidat, font=meny_f) <= maxw:
+                    rad1.append(del_)
+                else:
+                    break
+            rad2 = delar[len(rad1):]
+            d.text((24, 420), " · ".join(rad1) or fit(d, meny, meny_f, maxw), font=meny_f, fill=0)
+            if rad2:
+                d.text((24, 448), fit(d, " · ".join(rad2), meny_f, maxw), font=meny_f, fill=0)
 
     return img
 
@@ -268,7 +288,7 @@ def collect():
         "weather": safe(get_weather, {"temp": 0, "desc": "—", "low": 0, "high": 0}),
         "events": safe(get_events, []),
 	"matches": safe(get_matches, [(v, "—") for v in dict.fromkeys(BARN.values())]),
-        "lunch": safe(get_lunch, "—"),
+        "lunch": safe(get_lunch, ("", "—")),
     }
 
 
