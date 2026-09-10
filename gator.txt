@@ -1,39 +1,54 @@
 # Dagens gåta. En "fråga|svar" per rad. Rader med # och tomma rader hoppas över.
 # get_gata() roterar på dagnummer, så listan tar aldrig slut – fyll på fritt.
-# Ursprung: handplockat och städat ur roligagåtor.se/bra-gator, svar egna.
-Varför kom tomten inte i år?|Han hade klappat ihop sig
-Vad äter snögubben till frukost?|Frostflingor
-När är det afton hela dagen?|Julafton, påskafton och så vidare
-Vilken gubbe har aldrig varit barn?|Snögubben
-När kommer december före november?|När man tittar i en ordbok
-Hur kan man bära vatten i en hink som läcker utan att en droppe rinner ut?|När vattnet är fruset till is
-Säg ett namn som låter likadant framlänges och baklänges|Otto, Anna eller Ebbe
-Vem blir både plundrad och utkastad?|Julgranen
-Vilken frost gör dig diktsugen?|Rimfrost
-Vem lägger sig bara när det är kallt?|Isen
-Vem raskar över isen?|Räven
-Vad sägs man blir av att äta pepparkakor?|Snäll
-Roten upp och toppen ner, växer bara på vintern|En istapp
-Vilken fisk kan inte simma?|En fiskpinne
-Vilken stad är känd för sitt enklaste hus?|Enköping
-Hur många dagar tar det för ett adventsljus att brinna upp?|Inga – ljus brinner alltid ner
-Heter det "en rak kurva" eller "ett rak kurva"?|Ingetdera – det finns inga raka kurvor
-Vad säger den engelska salladen när man öppnar kylskåpsdörren?|"Close the door, I'm dressing"
-Jag har många blad men är varken träd eller blomma. Många vill sluka mig, andra somnar i mitt sällskap. Vem är jag?|En bok
-På vilken sida av fåret är det mest ull?|På utsidan
-Om en kartong ägg går på 14 kronor, vad går en kyckling på?|På benen
-När är det rätt att servera mjölken i en skål?|När man matar katten
+Vad blir blötare och blötare ju mer du torkar?|Handduken
+Vilken gris kan man stoppa in hel i munnen?|Polkagrisen
+Vilken gubbe ser man aldrig på sommaren?|Snögubben
+Vad är det som går och går och aldrig kommer fram till dörren?|Klockan
+Vilket djur kan hoppa högre än ett hus?|Nästan alla, eftersom ett hus inte kan hoppa
+Vilken råtta äter inte ost?|Dammråttan
+Vilka katter mår bäst i hög värme?|Lussekatter
+Vem kan tala alla språk?|Ekot
+Vad har man alltid framför sig?|Framtiden
+Hur skriver man vatten med två bokstäver?|Is
+Vad är det som tillhör dig, men dina vänner använder det mer än du?|Ditt namn
+Vilken nyckel kan inte öppna dörrar?|Skiftnyckeln
+Vad har tänder men kan inte äta?|En kam
+Ju mer man fyller mig desto lättare blir jag. Vad är jag?|En ballong
+Vad blir större och större ju mer du tar bort?|Hålet
+Vem är kort på dagen, lång på kvällen och försvinner på natten, men kan synas i månskenet?|Skuggan
+Vad är det som är smittsamt men som ingen är rädd för?|Skrattet
+Vad är det för skillnad på en trettioårig detektiv och en nyfödd gris?|30 år
+Vad är det som är varmt när det är kallt och kallt när det är varmt?|Elementet
+Jag har många blad, men är varken träd eller blomma. Många vill sluka mig medan andra somnar i mitt sällskap. Vad är jag?|En bok
+Vad är det för likhet mellan en fiskare och en bebis?|Båda vill ha napp
+Hur många månader har 28 dagar?|Alla
+Vilken gubbe ser man aldrig på vintern?|Jordgubben
+Vem har hals men inget huvud?|En flaska
+Vad väger mest, ett kilo fjädrar eller ett kilo tegelstenar?|Inget av dem, båda väger ett kilo
+Hur länge sover hästar?|Tills de vaknar
+Vilken veckodag är längst?|Torsdag, som har sju bokstäver
+Vilket ord stavas fel i alla ordböckerna?|Ordet FEL
+Om du tävlar och går om personen som är på tredje plats, vilken plats hamnar du på då?|På tredje plats
+Vad gör du alltid före du reser dig från en stol?|Sätter dig på den
+Hur skriver man blått med svart bläck?|Man skriver ordet BLÅTT
+Med vad börjar natten och slutar dagen?|Bokstaven N
+Vad kan du hålla i din högra hand, men inte i din vänstra?|Din vänstra hand
+Hur dricker utomjordingarna sitt kaffe?|På tefat
+Vad får man om man korsar en orm och en igelkott?|Taggtråd
+Vilket djur går sämst i djungeln?|Gorilla (går illa)
+Vilka glas är lättast att fylla på?|Tomma glas
+När har en hund fem ben?|När den har ett ben i munnen
+Vilken klocka visar inte tiden?|Blåklockan
+Ett ägg behöver tio minuter för att bli hårdkokt. Hur lång tid tar det att hårdkoka tre ägg?|Tio minuter
+När får man sparka på sin födelsedagspresent?|När det är en fotboll
+Vart flyger fåglarna?|Dit näbben pekar
+Vad går upp och ner utan att röra sig?|Trappan
+Vem har aldrig klätt sig själv trots att den är gammal?|Julgranen
+Vad har vampyrerna i kaffet?|Blodsocker
+Vad är det som har fyra ben på dagen och sex ben på natten?|Sängen
+Vad äter snögubben till frukost?|Snöflingor
+Heter det "en rak kurva" eller heter det "ett rak kurva"?|Det finns inga raka kurvor
 När är det extra viktigt att se upp för skolbarn i trafiken?|När de kör bil
-En man gick ut i ovädret utan paraply men blev inte blöt. Hur?|Det var en sandstorm
-Ett ägg behöver tio minuter för att bli hårdkokt. Hur länge tar tre ägg?|Tio minuter
-Du kapar mitt huvud utan att färga kniven röd, sedan gråter du vid min sida när jag är död. Vad är jag?|En lök
-Du hörde mig nyss och får höra mig igen. Sedan dör jag tills du ropar på mig. Vem är jag?|Ett eko
-En grönsakshandlare är 54 år, 175 cm lång och har skonummer 43. Vad väger han?|Frukt och grönsaker
-Ett par har sju barn och hälften är pojkar. Hur går det ihop?|Alla sju är pojkar
-Den har varken lock eller botten, men håller ändå kött, blod och ben på plats. Vad är det?|En ring
-Vilken hund klarar väldigt hög temperatur?|En varmkorv
-Med vad börjar natten och slutar dagen?|Med bokstaven N
-En dömd man väljer mellan tre rum: ett med eldhav, ett med en beväpnad lönnmördare, ett med ett lejon som inte ätit på ett år. Vilket är säkrast?|Rummet med lejonet – det har svultit ihjäl
-Vad kan du hålla i din högra hand men inte i din vänstra?|Din vänstra hand
-Fyra äpplen hänger i ett träd. Prästen, hans dotter, klockaren och hans fru tar varsitt, men ett hänger kvar. Hur?|Klockaren är gift med prästens dotter – de är bara tre personer
-Vilken nyckel kan inte öppna dörrar?|En skiftnyckel
+En man kom in på ett café och sa endast en bokstav. Vad beställde han?|T
+Vad har hatt och fot men saknar huvud och sko?|Svampen
+Vad gör alla i hela världen i samma takt samtidigt?|Åldras
