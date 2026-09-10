@@ -68,6 +68,24 @@ def fit(d, text, f, maxbredd):
         text = text[:-1]
     return text + "…"
 
+def wrap(d, text, f, maxw):
+    """Dela upp text i rader som ryms inom maxw. Max 2 rader."""
+    words = text.split()
+    lines, cur = [], []
+    for w in words:
+        test = " ".join(cur + [w])
+        if d.textlength(test, font=f) <= maxw:
+            cur.append(w)
+        else:
+            if cur:
+                lines.append(" ".join(cur))
+            cur = [w]
+            if len(lines) >= 1:
+                break
+    if cur:
+        lines.append(" ".join(cur))
+    return lines or [""]
+
 FONT_WX = str(Path(__file__).with_name("fonts") / "weathericons.ttf")
 
 _WSYMB_GLYPH = {
@@ -94,6 +112,16 @@ def draw_weather_icon(img, x, y, sz, code):
     bw = tmp.point(lambda p: 0 if p < 128 else 255, "1")
     img.paste(bw, (x - 10, y - 4))
 
+_WSYMB_SEVERITY = {
+    1: 1, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 4,
+    8: 5, 9: 6, 10: 7, 11: 9,
+    12: 5, 13: 6, 14: 7,
+    15: 5, 16: 6, 17: 7,
+    18: 6, 19: 7, 20: 8, 21: 9,
+    22: 6, 23: 7, 24: 8,
+    25: 6, 26: 7, 27: 8,
+}
+
 def get_weather():
     """SMHI SNOW1gv1. Ersatte pmp3g som stängdes 2026-03-31."""
     url = ("https://opendata-download-metfcst.smhi.se/api/category/snow1g/"
@@ -110,9 +138,12 @@ def get_weather():
     temps = [s["data"]["air_temperature"] for s in upcoming]
 
     code = series[0]["data"].get("symbol_code", 0)
+    codes = [s["data"].get("symbol_code", 0) for s in upcoming]
+    forecast_code = max(codes, key=lambda c: _WSYMB_SEVERITY.get(c, 0)) if codes else 0
     return {
         "temp": series[0]["data"]["air_temperature"],
         "code": code,
+        "forecast_code": forecast_code,
         "low": min(temps),
         "high": max(temps),
     }
@@ -267,8 +298,11 @@ def render(data):
     d.text((24, 78), temp_str, font=temp_f, fill=0)
     icon_x = 24 + int(d.textlength(temp_str, font=temp_f)) + 10
     draw_weather_icon(img, icon_x, 84, 72, w.get("code", 0))
-    d.text((24, 226), f"{w['low']:.0f}° / {w['high']:.0f}°  kommande 12h",
-           font=font(20), fill=0)
+    minmax_f = font(20)
+    minmax_str = f"{w['low']:.0f}° / {w['high']:.0f}°  kommande 12h"
+    d.text((24, 226), minmax_str, font=minmax_f, fill=0)
+    fc_x = 24 + int(d.textlength(minmax_str, font=minmax_f)) + 18
+    draw_weather_icon(img, fc_x, 218, 32, w.get("forecast_code", 0))
     d.line([(320, 70), (320, 290)], fill=0, width=1)
 
     # kalender, höger
@@ -276,28 +310,33 @@ def render(data):
     ev_fb = font(20, True)
     maxw = W - 444
 
-    def cal_section(label, events, max_rows):
+    def cal_section(label, events, max_rows, y_max):
         nonlocal y
         d.text((348, y), label, font=font(18, True), fill=0)
         y += 24
         for tid, text in events[:max_rows]:
+            if y >= y_max:
+                break
+            lines = wrap(d, text, ev_f, maxw)
             d.text((348, y), tid, font=ev_fb, fill=0)
-            d.text((418, y), fit(d, text, ev_f, maxw), font=ev_f, fill=0)
-            y += 26
+            for line in lines:
+                d.text((432, y), line, font=ev_f, fill=0)
+                y += 22
+            y += 4
         if not events:
             d.text((348, y), "Inget inbokat", font=ev_f, fill=0)
             y += 26
 
     y = 78
-    cal_section("IDAG", data["events"], 3)
+    cal_section("IDAG", data["events"], 3, y_max=185)
     y += 8
-    cal_section("IMORGON", data["tomorrow"], 2)
+    cal_section("IMORGON", data["tomorrow"], 2, y_max=290)
 
     rule(300)
 
     # nästa match, en rad per barn
-    d.text((24, 290), "NÄSTA MATCH", font=font(18, True), fill=0)
-    y = 316
+    d.text((24, 306), "NÄSTA MATCH", font=font(18, True), fill=0)
+    y = 328
     for vem, text in data["matches"]:
         d.text((24, y), vem, font=font(18, True), fill=0)
         d.text((160, y), fit(d, text, font(18), W - 184), font=font(18), fill=0)
@@ -326,7 +365,7 @@ def collect():
             return fallback
 
     return {
-        "weather": safe(get_weather, {"temp": 0, "code": 0, "low": 0, "high": 0}),
+        "weather": safe(get_weather, {"temp": 0, "code": 0, "forecast_code": 0, "low": 0, "high": 0}),
         "events": safe(get_events, []),
         "tomorrow": safe(get_tomorrow_events, []),
 	"matches": safe(get_matches, [(v, "—") for v in dict.fromkeys(BARN.values())]),
