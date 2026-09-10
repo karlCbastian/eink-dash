@@ -176,6 +176,19 @@ def get_events():
     return ut
 
 
+def get_tomorrow_events():
+    now = datetime.now(TZ)
+    imorgon = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    slut = imorgon.replace(hour=23, minute=59)
+    evs = recurring_ical_events.of(_calendar()).between(imorgon, slut)
+    ut = []
+    for e in sorted(evs, key=_start):
+        vem, namn = _who(e), _summary(e)
+        tid = "Heldag" if _allday(e) else _start(e).strftime("%H:%M")
+        ut.append((tid, f"{vem}: {namn}" if vem else namn))
+    return ut
+
+
 def get_matches():
     """Nästa match per barn. Returnerar en rad var, i BARN-ordning."""
     hittade = {}
@@ -259,14 +272,26 @@ def render(data):
     d.line([(320, 70), (320, 290)], fill=0, width=1)
 
     # kalender, höger
-    d.text((348, 78), "IDAG", font=font(20, True), fill=0)
-    y = 112
-    for tid, text in data["events"][:5]:
-        d.text((348, y), tid, font=font(22, True), fill=0)
-        d.text((424, y), text, font=font(22), fill=0)
-        y += 34
-    if not data["events"]:
-        d.text((348, y), "Inget inbokat", font=font(22), fill=0)
+    ev_f = font(20)
+    ev_fb = font(20, True)
+    maxw = W - 444
+
+    def cal_section(label, events, max_rows):
+        nonlocal y
+        d.text((348, y), label, font=font(18, True), fill=0)
+        y += 24
+        for tid, text in events[:max_rows]:
+            d.text((348, y), tid, font=ev_fb, fill=0)
+            d.text((418, y), fit(d, text, ev_f, maxw), font=ev_f, fill=0)
+            y += 26
+        if not events:
+            d.text((348, y), "Inget inbokat", font=ev_f, fill=0)
+            y += 26
+
+    y = 78
+    cal_section("IDAG", data["events"], 3)
+    y += 8
+    cal_section("IMORGON", data["tomorrow"], 2)
 
     rule(300)
 
@@ -303,6 +328,7 @@ def collect():
     return {
         "weather": safe(get_weather, {"temp": 0, "code": 0, "low": 0, "high": 0}),
         "events": safe(get_events, []),
+        "tomorrow": safe(get_tomorrow_events, []),
 	"matches": safe(get_matches, [(v, "—") for v in dict.fromkeys(BARN.values())]),
         "lunch": safe(get_lunch, ("", "—")),
     }
