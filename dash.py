@@ -376,15 +376,18 @@ def render(data):
 
     rule(392)
 
-    # dagens gåta, där skolmaten låg förut. Bara frågan — barnen får klura.
+    # dagens gåta. Frågan hela dagen, svaret först efter kl 14 — barnen får klura.
     if data["gata"]:
-        fraga, _svar = data["gata"]
-        d.text((24, 396), "DAGENS GÅTA", font=font(18, True), fill=0)
+        fraga, svar = data["gata"]
+        d.text((24, 394), "DAGENS GÅTA", font=font(18, True), fill=0)
         gata_f = font(20)
-        y = 420
-        for line in wrap(d, fraga, gata_f, W - 48, maxlines=3):
+        y = 416
+        for line in wrap(d, fraga, gata_f, W - 48, maxlines=2):
             d.text((24, y), line, font=gata_f, fill=0)
             y += 22
+        if svar and now.hour >= 14:
+            d.text((24, y + 2), fit(d, f"Svar: {svar}", font(18, True), W - 48),
+                   font=font(18, True), fill=0)
 
     return img
 
