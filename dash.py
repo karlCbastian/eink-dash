@@ -68,8 +68,8 @@ def fit(d, text, f, maxbredd):
         text = text[:-1]
     return text + "…"
 
-def wrap(d, text, f, maxw):
-    """Dela upp text i rader som ryms inom maxw. Max 2 rader."""
+def wrap(d, text, f, maxw, maxlines=2):
+    """Dela upp text i rader som ryms inom maxw. Kapar vid maxlines rader."""
     words = text.split()
     lines, cur = [], []
     for w in words:
@@ -80,7 +80,7 @@ def wrap(d, text, f, maxw):
             if cur:
                 lines.append(" ".join(cur))
             cur = [w]
-            if len(lines) >= 1:
+            if len(lines) >= maxlines - 1:
                 break
     if cur:
         lines.append(" ".join(cur))
@@ -321,11 +321,12 @@ def render(data):
     if meny:
         d.text((24, 196), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
         meny_f = font(20)
+        forsta = meny.split(" · ")[0]
         my = 220
-        for rad in meny.split(" · ")[:3]:
+        for line in wrap(d, forsta, meny_f, 320 - 48, maxlines=3):
             if my >= 290:
                 break
-            d.text((24, my), fit(d, rad, meny_f, 320 - 48), font=meny_f, fill=0)
+            d.text((24, my), fit(d, line, meny_f, 320 - 48), font=meny_f, fill=0)
             my += 24
 
     d.line([(320, 70), (320, 290)], fill=0, width=1)
