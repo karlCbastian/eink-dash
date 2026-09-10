@@ -299,9 +299,12 @@ def render(data):
     icon_x = 24 + int(d.textlength(temp_str, font=temp_f)) + 10
     draw_weather_icon(img, icon_x, 84, 72, w.get("code", 0))
     minmax_f = font(20)
-    minmax_str = f"{w['low']:.0f}° / {w['high']:.0f}°  kommande 12h"
-    d.text((24, 226), minmax_str, font=minmax_f, fill=0)
-    draw_weather_icon(img, 278, 218, 32, w.get("forecast_code", 0))
+    range_str = f"{w['low']:.0f}° / {w['high']:.0f}°"
+    d.text((24, 226), range_str, font=minmax_f, fill=0)
+    range_w = int(d.textlength(range_str, font=minmax_f))
+    icon_x = 24 + range_w + 14
+    draw_weather_icon(img, icon_x, 218, 32, w.get("forecast_code", 0))
+    d.text((icon_x + 34, 226), "kommande 12h", font=minmax_f, fill=0)
     d.line([(320, 70), (320, 290)], fill=0, width=1)
 
     # kalender, höger
