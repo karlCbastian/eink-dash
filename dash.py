@@ -301,8 +301,7 @@ def render(data):
     minmax_f = font(20)
     minmax_str = f"{w['low']:.0f}° / {w['high']:.0f}°  kommande 12h"
     d.text((24, 226), minmax_str, font=minmax_f, fill=0)
-    fc_x = 24 + int(d.textlength(minmax_str, font=minmax_f)) + 18
-    draw_weather_icon(img, fc_x, 218, 32, w.get("forecast_code", 0))
+    draw_weather_icon(img, 278, 218, 32, w.get("forecast_code", 0))
     d.line([(320, 70), (320, 290)], fill=0, width=1)
 
     # kalender, höger
