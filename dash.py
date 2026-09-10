@@ -212,7 +212,7 @@ def render(data):
     now = datetime.now()
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
     d.text((24, 14), dagar[now.weekday()].upper(), font=font(28, True), fill=0)
-    d.text((W - 24, 20), now.strftime("%-d %B  ·  %H:%M"),
+    d.text((W - 24, 20), now.strftime("uppd %H:%M"),
            font=font(20), fill=0, anchor="ra")
     rule(58)
 
