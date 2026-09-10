@@ -379,9 +379,9 @@ def render(data):
     # dagens gåta. Frågan hela dagen, svaret först efter kl 14 — barnen får klura.
     if data["gata"]:
         fraga, svar = data["gata"]
-        d.text((24, 394), "DAGENS GÅTA", font=font(18, True), fill=0)
+        d.text((24, 398), "DAGENS GÅTA", font=font(18, True), fill=0)
         gata_f = font(20)
-        y = 416
+        y = 420
         for line in wrap(d, fraga, gata_f, W - 48, maxlines=2):
             d.text((24, y), line, font=gata_f, fill=0)
             y += 22
