@@ -341,7 +341,6 @@ def render(data):
     now = datetime.now(TZ)
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
     txt((24, 14), f"{dagar[now.weekday()].upper()} {now.day}/{now.month}", font(28, True))
-    txt((W - 24, 20), now.strftime("uppd %H:%M"), font(20), anchor="ra")
     rule(58)
 
     # väder
@@ -424,6 +423,9 @@ def render(data):
             txt((24, y), vem, font(18, True))
             txt((160, y), fit(d, text, font(18), textw - 136), font(18))
             y += 26
+
+    d.text((W - 10, H - 6), now.strftime("uppd %H:%M"), font=font(12), fill=0,
+           stroke_width=1, stroke_fill=255, anchor="rb")
 
     return img
 
