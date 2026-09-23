@@ -27,6 +27,11 @@ DIVIDER_X = 360  # vänster: text, höger: väderbild
 SHOW_CALENDAR = False
 SHOW_MATCHES = False
 
+# Tillfällig testkrok: satt till ett SMHI-väderkod visar den bilden på nästa
+# körning utan att behöva ssha in och köra --force-code manuellt. Nolla till
+# None igen när du sett hur den ser ut på panelen.
+DEBUG_FORCE_CODE = 21
+
 IMAGES_DIR = Path(__file__).with_name("images")
 
 if sys.platform == "win32":
@@ -336,7 +341,7 @@ def render(data):
     now = datetime.now(TZ)
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
     txt((24, 14), f"{dagar[now.weekday()].upper()} {now.day}/{now.month}", font(28, True))
-    txt((DIVIDER_X - 24, 20), now.strftime("uppd %H:%M"), font(20), anchor="ra")
+    txt((W - 24, 20), now.strftime("uppd %H:%M"), font(20), anchor="ra")
     rule(58)
 
     # väder
@@ -464,9 +469,10 @@ if __name__ == "__main__":
 
     load_env()
     data = collect()
-    if args.force_code is not None:
-        data["weather"]["code"] = args.force_code
-        data["weather"]["forecast_code"] = args.force_code
+    force_code = args.force_code if args.force_code is not None else DEBUG_FORCE_CODE
+    if force_code is not None:
+        data["weather"]["code"] = force_code
+        data["weather"]["forecast_code"] = force_code
     img = render(data)
     if args.preview:
         img.save("preview.png")
