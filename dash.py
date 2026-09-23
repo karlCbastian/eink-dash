@@ -30,7 +30,7 @@ SHOW_MATCHES = False
 # Tillfällig testkrok: satt till ett SMHI-väderkod visar den bilden på nästa
 # körning utan att behöva ssha in och köra --force-code manuellt. Nolla till
 # None igen när du sett hur den ser ut på panelen.
-DEBUG_FORCE_CODE = 21
+DEBUG_FORCE_CODE = None
 
 IMAGES_DIR = Path(__file__).with_name("images")
 
@@ -424,7 +424,7 @@ def render(data):
             txt((160, y), fit(d, text, font(18), textw - 136), font(18))
             y += 26
 
-    d.text((W - 10, H - 6), now.strftime("uppd %H:%M"), font=font(12), fill=0,
+    d.text((W - 10, H - 16), now.strftime("uppd %H:%M"), font=font(12), fill=0,
            stroke_width=1, stroke_fill=255, anchor="rb")
 
     return img
