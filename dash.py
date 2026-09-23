@@ -94,32 +94,6 @@ def wrap(d, text, f, maxw, maxlines=2):
         lines.append(" ".join(cur))
     return lines or [""]
 
-FONT_WX = str(Path(__file__).with_name("fonts") / "weathericons.ttf")
-
-_WSYMB_GLYPH = {
-    1:  "",                        # day-sunny
-    2:  "",  3:  "",         # day-sunny-overcast
-    4:  "",  5:  "",  6:  "",  # cloudy
-    7:  "",                        # fog
-    8:  "",  9:  "",  10: "",  # day-showers
-    11: "",                        # day-thunderstorm
-    12: "",  13: "",  14: "",  # day-sleet
-    15: "",  16: "",  17: "",  # day-snow
-    18: "",  19: "",  20: "",  # rain
-    21: "",                        # thunderstorm
-    22: "",  23: "",  24: "",  # sleet
-    25: "",  26: "",  27: "",  # snow
-}
-
-def draw_weather_icon(img, x, y, sz, code):
-    glyph = _WSYMB_GLYPH.get(code, "")
-    f = ImageFont.truetype(FONT_WX, sz)
-    # Rendera i gråskala och tröskling → skarpare 1-bit än direkt läge "1"
-    tmp = Image.new("L", (sz + 20, sz + 20), 255)
-    ImageDraw.Draw(tmp).text((10, 4), glyph, font=f, fill=0)
-    bw = tmp.point(lambda p: 0 if p < 128 else 255, "1")
-    img.paste(bw, (x - 10, y - 4))
-
 _WSYMB_SEVERITY = {
     1: 1, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 4,
     8: 5, 9: 6, 10: 7, 11: 9,
@@ -145,18 +119,14 @@ _WEATHER_IMAGE = {
     25: "05_sno", 26: "05_sno", 27: "05_sno",
 }
 
-_GRAY4_LUT = [round(p / 255 * 3) * 85 for p in range(256)]
-
-def _posterize4(im):
-    """Reducerar till panelens 4 gråtoner (0/85/170/255) utan dithering —
-    epd7in5_V2 klarar riktiga gråtoner, ingen anledning att felsprida
-    ner till 1-bit som för text."""
-    return im.point(_GRAY4_LUT)
-
+_WHITE_CLIP = 235  # gråvärden över detta blir rent vitt innan dithering
 
 def draw_weather_image(img, box, code):
     """Fyller box (x0,y0,x1,y1) med väderbilden för koden, beskuren (inte
-    utsträckt) så proportionerna hålls."""
+    utsträckt) så proportionerna hålls. Dithras till 1-bit med
+    Floyd-Steinberg — panelen ser bara svart/vitt. Nästan-vita partier
+    (himmel, papperstextur i källbilderna) klipps till rent vitt först,
+    annars prickar dithringen ner dem i onödan."""
     x0, y0, x1, y1 = box
     bw, bh = x1 - x0, y1 - y0
     stam = _WEATHER_IMAGE.get(code, "01_soligt")
@@ -167,7 +137,8 @@ def draw_weather_image(img, box, code):
     # i alla bilderna, en centrerad beskärning skulle tappa det
     left, top = src.width - bw, (src.height - bh) // 2
     src = src.crop((left, top, left + bw, top + bh))
-    img.paste(_posterize4(src), (x0, y0))
+    src = src.point(lambda p: 255 if p >= _WHITE_CLIP else p)
+    img.paste(src.convert("1"), (x0, y0))
 
 
 def get_weather():
@@ -338,57 +309,67 @@ def get_gata():
     return fraga.strip(), svar.strip()
 # --- rendering ------------------------------------------------------------
 
-def render(data):
-    # Mode "L" — panelen klarar 4 gråtoner och väderbilden ska få vara grå,
-    # inte dithrad. Text och linjer ritas ändå bara i rent svart (fill=0)
-    # eller vitt, så de förblir skarpa; det är bara fotot som får gråtoner.
-    img = Image.new("L", (W, H), 255)
+STROKE_W = 3  # vit kontur runt texten, så den syns oavsett vad som ligger bakom
 
-    # väderbild, höger — fyller hela högerspalten. Ritas före texten så att
-    # skiljelinjen mellan spalterna hamnar ovanpå bildkanten.
+def render(data):
+    # Mode "1" ger osuddig text. Renderar du i "L" och konverterar sedan
+    # får du dithering på bokstäverna och allt ser grumligt ut.
+    img = Image.new("1", (W, H), 255)
+
+    # väderbild, hela panelen. Ritas före texten så texten hamnar ovanpå —
+    # texten konturas (vit kant) så den syns även mot mörka partier i bilden.
     w = data["weather"]
-    draw_weather_image(img, (DIVIDER_X, 0, W, H), w.get("code", 0))
+    draw_weather_image(img, (0, 0, W, H), w.get("code", 0))
 
     d = ImageDraw.Draw(img)
     textw = DIVIDER_X - 24 - 24  # bredd att radbryta text emot i vänsterspalten
 
+    def txt(xy, s, f, **kw):
+        d.text(xy, s, font=f, fill=0, stroke_width=STROKE_W, stroke_fill=255, **kw)
+
     def rule(y):
+        # vit halo under den svarta linjen, annars försvinner den mot mörka partier
+        d.line([(24, y), (DIVIDER_X - 24, y)], fill=255, width=2 + 2 * STROKE_W)
         d.line([(24, y), (DIVIDER_X - 24, y)], fill=0, width=2)
 
     # header
     now = datetime.now(TZ)
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
-    d.text((24, 14), dagar[now.weekday()].upper(), font=font(28, True), fill=0)
-    d.text((DIVIDER_X - 24, 20), now.strftime("uppd %H:%M"),
-           font=font(20), fill=0, anchor="ra")
+    txt((24, 14), dagar[now.weekday()].upper(), font(28, True))
+    txt((DIVIDER_X - 24, 20), now.strftime("uppd %H:%M"), font(20), anchor="ra")
     rule(58)
 
     # väder
     temp_f = font(72, True)
     temp_str = f"{w['temp']:.0f}°"
-    d.text((24, 74), temp_str, font=temp_f, fill=0)
-    icon_x = 24 + int(d.textlength(temp_str, font=temp_f)) + 10
-    draw_weather_icon(img, icon_x, 78, 52, w.get("code", 0))
+    txt((24, 74), temp_str, temp_f)
+    temp_w = int(d.textlength(temp_str, font=temp_f))
+    wx_f = font(28, True)
+    wx_x = 24 + temp_w + 14
+    wx_str = fit(d, WSYMB.get(w.get("code", 0), ""), wx_f, (DIVIDER_X - 24) - wx_x)
+    txt((wx_x, 112), wx_str, wx_f)
     minmax_f = font(20)
     range_str = f"{w['low']:.0f}° / {w['high']:.0f}°"
-    d.text((24, 162), range_str, font=minmax_f, fill=0)
+    txt((24, 162), range_str, minmax_f)
     range_w = int(d.textlength(range_str, font=minmax_f))
-    icon_x = 24 + range_w + 10
-    draw_weather_icon(img, icon_x, 150, 30, w.get("forecast_code", 0))
-    d.text((icon_x + 44, 162), "kommande 12h", font=minmax_f, fill=0)
+    forecast_wx = WSYMB.get(w.get("forecast_code", 0), "")
+    label = f"kommande 12h · {forecast_wx}" if forecast_wx else "kommande 12h"
+    label_x = 24 + range_w + 10
+    # får gå ut över bilden — texten är konturerad och läsbar ändå
+    txt((label_x, 162), fit(d, label, minmax_f, (W - 24) - label_x), minmax_f)
 
     rule(200)
 
     # skolmaten
     etikett, meny = data["lunch"]
     if meny:
-        d.text((24, 210), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
+        txt((24, 210), f"SKOLMATEN {etikett}".strip(), font(18, True))
         meny_f = font(20)
         my = 236
         for line in wrap(d, meny, meny_f, textw, maxlines=4):
             if my >= 332:
                 break
-            d.text((24, my), fit(d, line, meny_f, textw), font=meny_f, fill=0)
+            txt((24, my), fit(d, line, meny_f, textw), meny_f)
             my += 24
 
     rule(344)
@@ -396,15 +377,14 @@ def render(data):
     # dagens gåta. Frågan hela dagen, svaret först efter kl 14 — barnen får klura.
     if data["gata"]:
         fraga, svar = data["gata"]
-        d.text((24, 354), "DAGENS GÅTA", font=font(18, True), fill=0)
+        txt((24, 354), "DAGENS GÅTA", font(18, True))
         gata_f = font(20)
         y = 378
         for line in wrap(d, fraga, gata_f, textw, maxlines=2):
-            d.text((24, y), line, font=gata_f, fill=0)
+            txt((24, y), line, gata_f)
             y += 24
         if svar and now.hour >= 14:
-            d.text((24, y + 4), fit(d, f"Svar: {svar}", font(18, True), textw),
-                   font=font(18, True), fill=0)
+            txt((24, y + 4), fit(d, f"Svar: {svar}", font(18, True), textw), font(18, True))
 
     if SHOW_CALENDAR:
         ev_f = font(20)
@@ -412,19 +392,19 @@ def render(data):
 
         def cal_section(label, events, max_rows, y_max):
             nonlocal y
-            d.text((24, y), label, font=font(18, True), fill=0)
+            txt((24, y), label, font(18, True))
             y += 24
             for tid, text in events[:max_rows]:
                 if y >= y_max:
                     break
                 lines = wrap(d, text, ev_f, textw)
-                d.text((24, y), tid, font=ev_fb, fill=0)
+                txt((24, y), tid, ev_fb)
                 for line in lines:
-                    d.text((108, y), line, font=ev_f, fill=0)
+                    txt((108, y), line, ev_f)
                     y += 22
                 y += 4
             if not events:
-                d.text((24, y), "Inget inbokat", font=ev_f, fill=0)
+                txt((24, y), "Inget inbokat", ev_f)
                 y += 26
 
         y = 78
@@ -433,15 +413,12 @@ def render(data):
         cal_section("IMORGON", data["tomorrow"], 2, y_max=290)
 
     if SHOW_MATCHES:
-        d.text((24, 306), "NÄSTA MATCH", font=font(18, True), fill=0)
+        txt((24, 306), "NÄSTA MATCH", font(18, True))
         y = 328
         for vem, text in data["matches"]:
-            d.text((24, y), vem, font=font(18, True), fill=0)
-            d.text((160, y), fit(d, text, font(18), textw - 136), font=font(18), fill=0)
+            txt((24, y), vem, font(18, True))
+            txt((160, y), fit(d, text, font(18), textw - 136), font(18))
             y += 26
-
-    # skiljelinje mellan text- och bildspalten
-    d.line([(DIVIDER_X, 0), (DIVIDER_X, H)], fill=0, width=2)
 
     return img
 
@@ -471,15 +448,8 @@ def push(img):
 
     epd = epd7in5_V2.EPD()
     try:
-        if hasattr(epd, "Init_4Gray"):
-            # Riktiga gråtoner, ingen dithering.
-            epd.Init_4Gray()
-            epd.display_4Gray(epd.getbuffer_4Gray(img))
-        else:
-            # Äldre/annan version av biblioteket utan 4Gray-stöd — tröskla
-            # rent i stället för att dithra ner till 1-bit.
-            epd.init()
-            epd.display(epd.getbuffer(img.convert("1", dither=Image.NONE)))
+        epd.init()
+        epd.display(epd.getbuffer(img))
     finally:
         # Aldrig hoppa över. Panelen tar skada av att stå kvar i drivet läge.
         epd.sleep()
