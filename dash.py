@@ -145,11 +145,18 @@ _WEATHER_IMAGE = {
     25: "05_sno", 26: "05_sno", 27: "05_sno",
 }
 
+_GRAY4_LUT = [round(p / 255 * 3) * 85 for p in range(256)]
+
+def _posterize4(im):
+    """Reducerar till panelens 4 gråtoner (0/85/170/255) utan dithering —
+    epd7in5_V2 klarar riktiga gråtoner, ingen anledning att felsprida
+    ner till 1-bit som för text."""
+    return im.point(_GRAY4_LUT)
+
+
 def draw_weather_image(img, box, code):
     """Fyller box (x0,y0,x1,y1) med väderbilden för koden, beskuren (inte
-    utsträckt) så proportionerna hålls. Dithras till 1-bit — till skillnad
-    från text vill vi ha Floyd-Steinberg här, annars blir gråtonerna i
-    bilden till platta block."""
+    utsträckt) så proportionerna hålls."""
     x0, y0, x1, y1 = box
     bw, bh = x1 - x0, y1 - y0
     stam = _WEATHER_IMAGE.get(code, "01_soligt")
@@ -160,7 +167,7 @@ def draw_weather_image(img, box, code):
     # i alla bilderna, en centrerad beskärning skulle tappa det
     left, top = src.width - bw, (src.height - bh) // 2
     src = src.crop((left, top, left + bw, top + bh))
-    img.paste(src.convert("1"), (x0, y0))
+    img.paste(_posterize4(src), (x0, y0))
 
 
 def get_weather():
@@ -332,9 +339,10 @@ def get_gata():
 # --- rendering ------------------------------------------------------------
 
 def render(data):
-    # Mode "1" ger osuddig text. Renderar du i "L" och konverterar sedan
-    # får du dithering på bokstäverna och allt ser grumligt ut.
-    img = Image.new("1", (W, H), 255)
+    # Mode "L" — panelen klarar 4 gråtoner och väderbilden ska få vara grå,
+    # inte dithrad. Text och linjer ritas ändå bara i rent svart (fill=0)
+    # eller vitt, så de förblir skarpa; det är bara fotot som får gråtoner.
+    img = Image.new("L", (W, H), 255)
 
     # väderbild, höger — fyller hela högerspalten. Ritas före texten så att
     # skiljelinjen mellan spalterna hamnar ovanpå bildkanten.
@@ -463,8 +471,15 @@ def push(img):
 
     epd = epd7in5_V2.EPD()
     try:
-        epd.init()
-        epd.display(epd.getbuffer(img))
+        if hasattr(epd, "Init_4Gray"):
+            # Riktiga gråtoner, ingen dithering.
+            epd.Init_4Gray()
+            epd.display_4Gray(epd.getbuffer_4Gray(img))
+        else:
+            # Äldre/annan version av biblioteket utan 4Gray-stöd — tröskla
+            # rent i stället för att dithra ner till 1-bit.
+            epd.init()
+            epd.display(epd.getbuffer(img.convert("1", dither=Image.NONE)))
     finally:
         # Aldrig hoppa över. Panelen tar skada av att stå kvar i drivet läge.
         epd.sleep()
