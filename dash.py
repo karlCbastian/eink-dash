@@ -335,7 +335,7 @@ def render(data):
     # header
     now = datetime.now(TZ)
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
-    txt((24, 14), dagar[now.weekday()].upper(), font(28, True))
+    txt((24, 14), f"{dagar[now.weekday()].upper()} {now.day}/{now.month}", font(28, True))
     txt((DIVIDER_X - 24, 20), now.strftime("uppd %H:%M"), font(20), anchor="ra")
     rule(58)
 
@@ -458,10 +458,16 @@ def push(img):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--preview", action="store_true", help="spara PNG, rita inte")
+    ap.add_argument("--force-code", type=int,
+                     help="tvinga ett SMHI-väderkod för test, t.ex. 21 för åska")
     args = ap.parse_args()
 
     load_env()
-    img = render(collect())
+    data = collect()
+    if args.force_code is not None:
+        data["weather"]["code"] = args.force_code
+        data["weather"]["forecast_code"] = args.force_code
+    img = render(data)
     if args.preview:
         img.save("preview.png")
         print("preview.png")
