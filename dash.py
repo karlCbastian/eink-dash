@@ -20,6 +20,14 @@ from PIL import Image, ImageDraw, ImageFont
 
 W, H = 800, 480
 LAT, LON = 59.43, 17.95  # Sollentuna
+DIVIDER_X = 360  # vänster: text, höger: väderbild
+
+# Kalender/match-funktionaliteten hålls igång i collect() men ritas inte just
+# nu — layouten har ingen plats reserverad för dem. Sätt True för att slå på.
+SHOW_CALENDAR = False
+SHOW_MATCHES = False
+
+IMAGES_DIR = Path(__file__).with_name("images")
 
 if sys.platform == "win32":
     FONT = "C:/Windows/Fonts/arial.ttf"
@@ -121,6 +129,39 @@ _WSYMB_SEVERITY = {
     22: 6, 23: 7, 24: 8,
     25: 6, 26: 7, 27: 8,
 }
+
+_WEATHER_IMAGE = {
+    1: "01_soligt",
+    2: "02_delvis_molnigt", 3: "02_delvis_molnigt",
+    4: "03_mulet", 5: "03_mulet", 6: "03_mulet",
+    7: "07_dimma",
+    8: "04_regn", 9: "04_regn", 10: "04_regn",
+    11: "06_aska",
+    12: "05_sno", 13: "05_sno", 14: "05_sno",
+    15: "05_sno", 16: "05_sno", 17: "05_sno",
+    18: "04_regn", 19: "04_regn", 20: "04_regn",
+    21: "06_aska",
+    22: "05_sno", 23: "05_sno", 24: "05_sno",
+    25: "05_sno", 26: "05_sno", 27: "05_sno",
+}
+
+def draw_weather_image(img, box, code):
+    """Fyller box (x0,y0,x1,y1) med väderbilden för koden, beskuren (inte
+    utsträckt) så proportionerna hålls. Dithras till 1-bit — till skillnad
+    från text vill vi ha Floyd-Steinberg här, annars blir gråtonerna i
+    bilden till platta block."""
+    x0, y0, x1, y1 = box
+    bw, bh = x1 - x0, y1 - y0
+    stam = _WEATHER_IMAGE.get(code, "01_soligt")
+    src = Image.open(IMAGES_DIR / f"{stam}.jpg").convert("L")
+    scale = max(bw / src.width, bh / src.height)
+    src = src.resize((round(src.width * scale), round(src.height * scale)), Image.LANCZOS)
+    # högerjusterad beskärning — motivet (träd/klippor) sitter på högerkanten
+    # i alla bilderna, en centrerad beskärning skulle tappa det
+    left, top = src.width - bw, (src.height - bh) // 2
+    src = src.crop((left, top, left + bw, top + bh))
+    img.paste(src.convert("1"), (x0, y0))
+
 
 def get_weather():
     """SMHI SNOW1gv1. Ersatte pmp3g som stängdes 2026-03-31."""
@@ -294,21 +335,27 @@ def render(data):
     # Mode "1" ger osuddig text. Renderar du i "L" och konverterar sedan
     # får du dithering på bokstäverna och allt ser grumligt ut.
     img = Image.new("1", (W, H), 255)
+
+    # väderbild, höger — fyller hela högerspalten. Ritas före texten så att
+    # skiljelinjen mellan spalterna hamnar ovanpå bildkanten.
+    w = data["weather"]
+    draw_weather_image(img, (DIVIDER_X, 0, W, H), w.get("code", 0))
+
     d = ImageDraw.Draw(img)
+    textw = DIVIDER_X - 24 - 24  # bredd att radbryta text emot i vänsterspalten
 
     def rule(y):
-        d.line([(24, y), (W - 24, y)], fill=0, width=2)
+        d.line([(24, y), (DIVIDER_X - 24, y)], fill=0, width=2)
 
     # header
     now = datetime.now(TZ)
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
     d.text((24, 14), dagar[now.weekday()].upper(), font=font(28, True), fill=0)
-    d.text((W - 24, 20), now.strftime("uppd %H:%M"),
+    d.text((DIVIDER_X - 24, 20), now.strftime("uppd %H:%M"),
            font=font(20), fill=0, anchor="ra")
     rule(58)
 
-    # väder, vänster — förminskat för att ge plats åt skolmaten under
-    w = data["weather"]
+    # väder
     temp_f = font(72, True)
     temp_str = f"{w['temp']:.0f}°"
     d.text((24, 74), temp_str, font=temp_f, fill=0)
@@ -322,72 +369,71 @@ def render(data):
     draw_weather_icon(img, icon_x, 150, 30, w.get("forecast_code", 0))
     d.text((icon_x + 44, 162), "kommande 12h", font=minmax_f, fill=0)
 
-    # skolmaten, under vädret i vänsterspalten
+    rule(200)
+
+    # skolmaten
     etikett, meny = data["lunch"]
     if meny:
-        d.text((24, 204), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
+        d.text((24, 210), f"SKOLMATEN {etikett}".strip(), font=font(18, True), fill=0)
         meny_f = font(20)
-        forsta = meny.split(" · ")[0]
-        my = 228
-        for line in wrap(d, forsta, meny_f, 320 - 48, maxlines=3):
-            if my >= 290:
+        my = 236
+        for line in wrap(d, meny, meny_f, textw, maxlines=4):
+            if my >= 332:
                 break
-            d.text((24, my), fit(d, line, meny_f, 320 - 48), font=meny_f, fill=0)
+            d.text((24, my), fit(d, line, meny_f, textw), font=meny_f, fill=0)
             my += 24
 
-    d.line([(320, 70), (320, 290)], fill=0, width=1)
-
-    # kalender, höger
-    ev_f = font(20)
-    ev_fb = font(20, True)
-    maxw = W - 444
-
-    def cal_section(label, events, max_rows, y_max):
-        nonlocal y
-        d.text((348, y), label, font=font(18, True), fill=0)
-        y += 24
-        for tid, text in events[:max_rows]:
-            if y >= y_max:
-                break
-            lines = wrap(d, text, ev_f, maxw)
-            d.text((348, y), tid, font=ev_fb, fill=0)
-            for line in lines:
-                d.text((432, y), line, font=ev_f, fill=0)
-                y += 22
-            y += 4
-        if not events:
-            d.text((348, y), "Inget inbokat", font=ev_f, fill=0)
-            y += 26
-
-    y = 78
-    cal_section("IDAG", data["events"], 3, y_max=185)
-    y += 8
-    cal_section("IMORGON", data["tomorrow"], 2, y_max=290)
-
-    rule(300)
-
-    # nästa match, en rad per barn
-    d.text((24, 306), "NÄSTA MATCH", font=font(18, True), fill=0)
-    y = 328
-    for vem, text in data["matches"]:
-        d.text((24, y), vem, font=font(18, True), fill=0)
-        d.text((160, y), fit(d, text, font(18), W - 184), font=font(18), fill=0)
-        y += 26
-
-    rule(392)
+    rule(344)
 
     # dagens gåta. Frågan hela dagen, svaret först efter kl 14 — barnen får klura.
     if data["gata"]:
         fraga, svar = data["gata"]
-        d.text((24, 398), "DAGENS GÅTA", font=font(18, True), fill=0)
+        d.text((24, 354), "DAGENS GÅTA", font=font(18, True), fill=0)
         gata_f = font(20)
-        y = 420
-        for line in wrap(d, fraga, gata_f, W - 48, maxlines=2):
+        y = 378
+        for line in wrap(d, fraga, gata_f, textw, maxlines=2):
             d.text((24, y), line, font=gata_f, fill=0)
-            y += 22
+            y += 24
         if svar and now.hour >= 14:
-            d.text((24, y + 2), fit(d, f"Svar: {svar}", font(18, True), W - 48),
+            d.text((24, y + 4), fit(d, f"Svar: {svar}", font(18, True), textw),
                    font=font(18, True), fill=0)
+
+    if SHOW_CALENDAR:
+        ev_f = font(20)
+        ev_fb = font(20, True)
+
+        def cal_section(label, events, max_rows, y_max):
+            nonlocal y
+            d.text((24, y), label, font=font(18, True), fill=0)
+            y += 24
+            for tid, text in events[:max_rows]:
+                if y >= y_max:
+                    break
+                lines = wrap(d, text, ev_f, textw)
+                d.text((24, y), tid, font=ev_fb, fill=0)
+                for line in lines:
+                    d.text((108, y), line, font=ev_f, fill=0)
+                    y += 22
+                y += 4
+            if not events:
+                d.text((24, y), "Inget inbokat", font=ev_f, fill=0)
+                y += 26
+
+        y = 78
+        cal_section("IDAG", data["events"], 3, y_max=185)
+        y += 8
+        cal_section("IMORGON", data["tomorrow"], 2, y_max=290)
+
+    if SHOW_MATCHES:
+        d.text((24, 306), "NÄSTA MATCH", font=font(18, True), fill=0)
+        y = 328
+        for vem, text in data["matches"]:
+            d.text((24, y), vem, font=font(18, True), fill=0)
+            d.text((160, y), fit(d, text, font(18), textw - 136), font=font(18), fill=0)
+            y += 26
+
+    # skiljelinje mellan text- och bildspalten
+    d.line([(DIVIDER_X, 0), (DIVIDER_X, H)], fill=0, width=2)
 
     return img
 
