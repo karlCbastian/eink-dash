@@ -8,6 +8,7 @@ import os
 import sys
 import argparse
 import re
+import math
 import feedparser
 from datetime import datetime, timedelta, time, date
 from zoneinfo import ZoneInfo
@@ -109,24 +110,55 @@ _WSYMB_SEVERITY = {
     25: 6, 26: 7, 27: 8,
 }
 
+# kod -> (dagbild, nattbild). Natt-varianten heter inte alltid dagnamnet + "_natt"
+# (01 byter "soligt" mot "klart" eftersom det inte kan vara soligt på natten).
 _WEATHER_IMAGE = {
-    1: "01_soligt",
-    2: "02_delvis_molnigt", 3: "02_delvis_molnigt",
-    4: "03_mulet", 5: "03_mulet", 6: "03_mulet",
-    7: "07_dimma",
-    8: "04_regn", 9: "04_regn", 10: "04_regn",
-    11: "06_aska",
-    12: "05_sno", 13: "05_sno", 14: "05_sno",
-    15: "05_sno", 16: "05_sno", 17: "05_sno",
-    18: "04_regn", 19: "04_regn", 20: "04_regn",
-    21: "06_aska",
-    22: "05_sno", 23: "05_sno", 24: "05_sno",
-    25: "05_sno", 26: "05_sno", 27: "05_sno",
+    1: ("01_soligt", "01_klart_natt"),
+    2: ("02_delvis_molnigt", "02_delvis_molnigt_natt"),
+    3: ("02_delvis_molnigt", "02_delvis_molnigt_natt"),
+    4: ("03_mulet", "03_mulet_natt"), 5: ("03_mulet", "03_mulet_natt"), 6: ("03_mulet", "03_mulet_natt"),
+    7: ("07_dimma", "07_dimma_natt"),
+    8: ("04_regn", "04_regn_natt"), 9: ("04_regn", "04_regn_natt"), 10: ("04_regn", "04_regn_natt"),
+    11: ("06_aska", "06_aska_natt"),
+    12: ("05_sno", "05_sno_natt"), 13: ("05_sno", "05_sno_natt"), 14: ("05_sno", "05_sno_natt"),
+    15: ("05_sno", "05_sno_natt"), 16: ("05_sno", "05_sno_natt"), 17: ("05_sno", "05_sno_natt"),
+    18: ("04_regn", "04_regn_natt"), 19: ("04_regn", "04_regn_natt"), 20: ("04_regn", "04_regn_natt"),
+    21: ("06_aska", "06_aska_natt"),
+    22: ("05_sno", "05_sno_natt"), 23: ("05_sno", "05_sno_natt"), 24: ("05_sno", "05_sno_natt"),
+    25: ("05_sno", "05_sno_natt"), 26: ("05_sno", "05_sno_natt"), 27: ("05_sno", "05_sno_natt"),
 }
+
+
+def _sun_times(lat, lon, d):
+    """Ungefärlig soluppgång/solnedgång (NOAA:s solformel), som tz-aware
+    datetime i lokal tid. Ingen extra dependency, ingen nätverkskälla."""
+    n = d.timetuple().tm_yday
+    lat_r = math.radians(lat)
+    gamma = 2 * math.pi / 365 * (n - 1)
+    eqtime = 229.18 * (0.000075 + 0.001868 * math.cos(gamma) - 0.032077 * math.sin(gamma)
+                        - 0.014615 * math.cos(2 * gamma) - 0.040849 * math.sin(2 * gamma))
+    decl = (0.006918 - 0.399912 * math.cos(gamma) + 0.070257 * math.sin(gamma)
+            - 0.006758 * math.cos(2 * gamma) + 0.000907 * math.sin(2 * gamma)
+            - 0.002697 * math.cos(3 * gamma) + 0.00148 * math.sin(3 * gamma))
+    cos_ha = (math.cos(math.radians(90.833)) / (math.cos(lat_r) * math.cos(decl))
+              - math.tan(lat_r) * math.tan(decl))
+    cos_ha = max(-1.0, min(1.0, cos_ha))  # klipp för midnattssol/polarnatt-fall
+    ha = math.degrees(math.acos(cos_ha))
+    noon = 720 - 4 * lon - eqtime  # minuter UTC
+    base = datetime(d.year, d.month, d.day, tzinfo=ZoneInfo("UTC"))
+    sunrise = base + timedelta(minutes=noon - 4 * ha)
+    sunset = base + timedelta(minutes=noon + 4 * ha)
+    return sunrise.astimezone(TZ), sunset.astimezone(TZ)
+
+
+def is_daytime(now):
+    sunrise, sunset = _sun_times(LAT, LON, now.date())
+    return sunrise <= now <= sunset
+
 
 _WHITE_CLIP = 235  # gråvärden över detta blir rent vitt innan dithering
 
-def draw_weather_image(img, box, code):
+def draw_weather_image(img, box, code, natt=False):
     """Fyller box (x0,y0,x1,y1) med väderbilden för koden, beskuren (inte
     utsträckt) så proportionerna hålls. Dithras till 1-bit med
     Floyd-Steinberg — panelen ser bara svart/vitt. Nästan-vita partier
@@ -134,7 +166,8 @@ def draw_weather_image(img, box, code):
     annars prickar dithringen ner dem i onödan."""
     x0, y0, x1, y1 = box
     bw, bh = x1 - x0, y1 - y0
-    stam = _WEATHER_IMAGE.get(code, "01_soligt")
+    dag, natt_stam = _WEATHER_IMAGE.get(code, _WEATHER_IMAGE[1])
+    stam = natt_stam if natt else dag
     src = Image.open(IMAGES_DIR / f"{stam}.jpg").convert("L")
     scale = max(bw / src.width, bh / src.height)
     src = src.resize((round(src.width * scale), round(src.height * scale)), Image.LANCZOS)
@@ -320,11 +353,12 @@ def render(data):
     # Mode "1" ger osuddig text. Renderar du i "L" och konverterar sedan
     # får du dithering på bokstäverna och allt ser grumligt ut.
     img = Image.new("1", (W, H), 255)
+    now = datetime.now(TZ)
 
     # väderbild, hela panelen. Ritas före texten så texten hamnar ovanpå —
     # texten konturas (vit kant) så den syns även mot mörka partier i bilden.
     w = data["weather"]
-    draw_weather_image(img, (0, 0, W, H), w.get("code", 0))
+    draw_weather_image(img, (0, 0, W, H), w.get("code", 0), natt=not is_daytime(now))
 
     d = ImageDraw.Draw(img)
     textw = DIVIDER_X - 24 - 24  # bredd att radbryta text emot i vänsterspalten
@@ -338,7 +372,6 @@ def render(data):
         d.line([(24, y), (DIVIDER_X - 24, y)], fill=0, width=2)
 
     # header
-    now = datetime.now(TZ)
     dagar = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
     txt((24, 14), f"{dagar[now.weekday()].upper()} {now.day}/{now.month}", font(28, True))
     rule(58)
