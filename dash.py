@@ -347,7 +347,7 @@ def get_gata():
     return fraga.strip(), svar.strip()
 # --- rendering ------------------------------------------------------------
 
-STROKE_W = 3  # vit kontur runt texten, så den syns oavsett vad som ligger bakom
+STROKE_W = 1  # vit kontur runt texten, så den syns oavsett vad som ligger bakom
 
 def render(data):
     # Mode "1" ger osuddig text. Renderar du i "L" och konverterar sedan
