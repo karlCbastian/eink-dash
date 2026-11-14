@@ -345,6 +345,56 @@ def get_gata():
     rad = rader[datetime.now(TZ).timetuple().tm_yday % len(rader)]
     fraga, _, svar = rad.partition("|")
     return fraga.strip(), svar.strip()
+
+
+SKOLA_DIR = Path("50 Privat") / "Projekt" / "Skola" / "Veckor"
+
+def _rensa_md(s):
+    s = re.sub(r"\*\(Källa:.*?\)\*", "", s)        # källhänvisningar
+    s = re.sub(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]", r"\1", s)  # [[länk|text]]
+    s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)  # [text](url)
+    s = re.sub(r"[*_`]", "", s)
+    return " ".join(s.split())
+
+def get_veckan(namn=None):
+    """Veckosammanfattningen ur veckoanteckningen i Obsidian-valvet
+    (VAULT_DIR, default ~/vault): rubriken och punkterna under 'Veckan i
+    korthet'. Väljer filen efter ISO-veckonummer: innevarande vecka, men
+    nästa vecka från lördagen (så en gammal fil aldrig visas som aktuell).
+    namn (t.ex. "2026-v46") väljer en specifik fil, utan veckokontroll.
+    Returnerar (rubrik, [punkt, ...]) eller None."""
+    vault = Path(os.environ.get("VAULT_DIR", Path.home() / "vault"))
+    filer = []
+    for f in (vault / SKOLA_DIR).glob("*.md"):
+        m = re.fullmatch(r"(\d{4})-v(\d+)", f.stem)
+        if m:
+            filer.append(((int(m.group(1)), int(m.group(2))), f))
+    if namn:
+        filer = [(k, f) for k, f in filer if f.stem == namn]
+    else:
+        nu = datetime.now(TZ)
+        denna, nasta = nu.isocalendar(), (nu + timedelta(days=7)).isocalendar()
+        ordning = [(denna.year, denna.week), (nasta.year, nasta.week)]
+        if nu.weekday() >= 5:  # helgen: nästa veckas sammanfattning går först
+            ordning.reverse()
+        filer = [(k, f) for k, f in filer if k in ordning]
+        filer.sort(key=lambda kf: ordning.index(kf[0]))
+    if not filer:
+        return None
+    fil = filer[0][1] if not namn else filer[-1][1]
+    rubrik, punkter, i_avsnitt = "", [], False
+    for rad in fil.read_text(encoding="utf-8").splitlines():
+        if rad.startswith("# ") and not rubrik:
+            rubrik = _rensa_md(rad[2:])
+        elif rad.startswith("## "):
+            i_avsnitt = rad[3:].strip().lower() == "veckan i korthet"
+        elif i_avsnitt and rad.lstrip().startswith(("- ", "* ")):
+            punkt = _rensa_md(rad.lstrip()[2:])
+            if punkt:
+                punkter.append(punkt)
+    return rubrik, punkter
+
+
 # --- rendering ------------------------------------------------------------
 
 STROKE_W = 2  # vit kontur runt texten, så den syns oavsett vad som ligger bakom
@@ -463,6 +513,72 @@ def render(data):
     return img
 
 
+HEAD_Y = 84  # rubrikradens underkant (rymmer skolmaten på två rader)
+
+def render_vecka(vecka, code=1, lunch=None):
+    """Testlayout: veckosammanfattningen över väderbilden (dag/natt), med
+    konturerad text som i huvudlayouten. Radbryts med hängande indrag."""
+    img = Image.new("1", (W, H), 255)
+    now = datetime.now(TZ)
+    draw_weather_image(img, (0, 0, W, H), code, natt=not is_daytime(now))
+    d = ImageDraw.Draw(img)
+
+    def txt(xy, s, f, **kw):
+        d.text(xy, s, font=f, fill=0, stroke_width=STROKE_W, stroke_fill=255, **kw)
+
+    rubrik, punkter = vecka or ("", [])
+    titel_f = font(28, True)
+    txt((24, 14), (rubrik or "Veckan").upper(), titel_f)
+    if lunch and lunch[1] not in ("", "—", "Ingen meny"):
+        # dagens skolmat i rubrikraden, till höger om veckotiteln
+        lx = max(370, 24 + int(d.textlength((rubrik or "Veckan").upper(), font=titel_f)) + 28)
+        txt((lx, 8), ("SKOLMATEN " + lunch[0] if lunch[0] != "SKOLMATEN" else "SKOLMATEN"), font(16, True))
+        rader = wrap(d, lunch[1].split(" · ")[0].strip(" ,"), font(20), W - 24 - lx, maxlines=10)
+        if len(rader) > 2:  # kapa snyggt med … istället för att tappa sista orden
+            rader = [rader[0], " ".join(rader[1:])]
+        for i, rad in enumerate(rader):
+            txt((lx, 30 + i * 23), fit(d, rad, font(20), W - 24 - lx), font(20))
+    d.line([(24, HEAD_Y), (W - 24, HEAD_Y)], fill=255, width=2 + 2 * STROKE_W)
+    d.line([(24, HEAD_Y), (W - 24, HEAD_Y)], fill=0, width=2)
+
+    bredd, botten = VECKA_TEXTBREDD, H - 28
+
+    def layout(storlek):
+        f = font(storlek)
+        rad_h, indrag = round(storlek * 1.25), round(storlek * 1.1)
+        y, block = HEAD_Y + 14, []
+        for punkt in punkter:
+            rader = wrap(d, punkt, f, bredd - indrag, maxlines=6)
+            block.append(rader)
+            y += rad_h * len(rader) + round(storlek * 0.45)
+        return f, rad_h, indrag, block, y
+
+    # största storleken där allt ryms (min 14 px), annars kapas det sista
+    for storlek in range(20, 13, -1):
+        f, rad_h, indrag, block, slut = layout(storlek)
+        if slut <= botten:
+            break
+    y = HEAD_Y + 14
+    if not punkter:
+        txt((24, y), "Ingen veckosammanfattning", f)
+    for i, rader in enumerate(block):
+        if y + rad_h * len(rader) > botten:
+            txt((24, y), f"… +{len(block) - i} till", f)
+            break
+        txt((24, y), "•", f)
+        for rad in rader:
+            txt((24 + indrag, y), fit(d, rad, f, bredd - indrag), f)
+            y += rad_h
+        y += round(storlek * 0.45)
+
+    d.text((W - 10, H - 6), now.strftime("uppd %H:%M"), font=font(12), fill=0,
+           stroke_width=1, stroke_fill=255, anchor="rb")
+    return img
+
+
+VECKA_TEXTBREDD = 520
+
+
 def collect():
     """Varje källa failar tyst. En trasig RSS ska inte svälja hela skärmen."""
     def safe(fn, fallback):
@@ -498,17 +614,38 @@ def push(img):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--preview", action="store_true", help="spara PNG, rita inte")
+    ap.add_argument("--layout", choices=["vecka", "standard"], default="vecka",
+                    help="vecka = veckosammanfattningen (default), standard = gamla dagsvyn")
+    ap.add_argument("--vecka", help="veckofil att visa i vecka-layouten, t.ex. 2026-v46")
     ap.add_argument("--force-code", type=int,
                      help="tvinga ett SMHI-väderkod för test, t.ex. 21 för åska")
     args = ap.parse_args()
 
     load_env()
-    data = collect()
-    force_code = args.force_code if args.force_code is not None else DEBUG_FORCE_CODE
-    if force_code is not None:
-        data["weather"]["code"] = force_code
-        data["weather"]["forecast_code"] = force_code
-    img = render(data)
+    if args.layout == "vecka":
+        try:
+            vecka = get_veckan(args.vecka)
+        except Exception as e:
+            print(f"get_veckan: {e}", file=sys.stderr)
+            vecka = None
+        try:
+            kod = get_weather().get("code", 1)
+        except Exception as e:
+            print(f"get_weather: {e}", file=sys.stderr)
+            kod = 1
+        try:
+            lunch = get_lunch()
+        except Exception as e:
+            print(f"get_lunch: {e}", file=sys.stderr)
+            lunch = None
+        img = render_vecka(vecka, kod, lunch)
+    else:
+        data = collect()
+        force_code = args.force_code if args.force_code is not None else DEBUG_FORCE_CODE
+        if force_code is not None:
+            data["weather"]["code"] = force_code
+            data["weather"]["forecast_code"] = force_code
+        img = render(data)
     if args.preview:
         img.save("preview.png")
         print("preview.png")
