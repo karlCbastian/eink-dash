@@ -158,12 +158,15 @@ def is_daytime(now):
 
 _WHITE_CLIP = 235  # gråvärden över detta blir rent vitt innan dithering
 
-def draw_weather_image(img, box, code, natt=False):
+def draw_weather_image(img, box, code, natt=False, wash=None):
     """Fyller box (x0,y0,x1,y1) med väderbilden för koden, beskuren (inte
     utsträckt) så proportionerna hålls. Dithras till 1-bit med
     Floyd-Steinberg — panelen ser bara svart/vitt. Nästan-vita partier
     (himmel, papperstextur i källbilderna) klipps till rent vitt först,
-    annars prickar dithringen ner dem i onödan."""
+    annars prickar dithringen ner dem i onödan.
+    wash=(styrka, bredd) tonar bilden mot vitt från vänsterkanten (full styrka
+    t.o.m. 70 % av bredden, sedan mjukt ut till 0), så text läser bra även
+    mot mörka bilder, t.ex. nattbilderna."""
     x0, y0, x1, y1 = box
     bw, bh = x1 - x0, y1 - y0
     dag, natt_stam = _WEATHER_IMAGE.get(code, _WEATHER_IMAGE[1])
@@ -175,6 +178,14 @@ def draw_weather_image(img, box, code, natt=False):
     # i alla bilderna, en centrerad beskärning skulle tappa det
     left, top = src.width - bw, (src.height - bh) // 2
     src = src.crop((left, top, left + bw, top + bh))
+    if wash:
+        styrka, bredd = wash
+        full = bredd * 0.7
+        maskrad = [round(255 * styrka * max(0.0, min(1.0, (bredd - x) / (bredd - full))))
+                   if x > full else round(255 * styrka) for x in range(bw)]
+        mask = Image.new("L", (bw, bh))
+        mask.putdata(maskrad * bh)
+        src = Image.composite(Image.new("L", (bw, bh), 255), src, mask)
     src = src.point(lambda p: 255 if p >= _WHITE_CLIP else p)
     img.paste(src.convert("1"), (x0, y0))
 
@@ -513,6 +524,7 @@ def render(data):
     return img
 
 
+VECKA_WASH = (0.65, 620)  # (styrka 0–1, bredd i px): ljusare bild bakom texten
 HEAD_Y = 84  # rubrikradens underkant (rymmer skolmaten på två rader)
 
 def render_vecka(vecka, code=1, lunch=None):
@@ -520,7 +532,7 @@ def render_vecka(vecka, code=1, lunch=None):
     konturerad text som i huvudlayouten. Radbryts med hängande indrag."""
     img = Image.new("1", (W, H), 255)
     now = datetime.now(TZ)
-    draw_weather_image(img, (0, 0, W, H), code, natt=not is_daytime(now))
+    draw_weather_image(img, (0, 0, W, H), code, natt=not is_daytime(now), wash=VECKA_WASH)
     d = ImageDraw.Draw(img)
 
     def txt(xy, s, f, **kw):
