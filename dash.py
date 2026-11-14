@@ -524,7 +524,7 @@ def render(data):
     return img
 
 
-VECKA_WASH = (0.65, 620)  # (styrka 0–1, bredd i px): ljusare bild bakom texten
+VECKA_WASH = (0.5, 620)  # (styrka 0–1, bredd i px): ljusare bild bakom texten
 HEAD_Y = 84  # rubrikradens underkant (rymmer skolmaten på två rader)
 
 def render_vecka(vecka, code=1, lunch=None):
